@@ -1,16 +1,12 @@
-
 type GameType = typeof(game) & {
-    HttpGet: (link: any) -> any,
+	HttpGet: (link: any) -> any,
 }
 
 local game = game :: GameType
 local loadstring = loadstring :: (data: any) -> any
-local fireproximityprompt: (prompt: ProximityPrompt) -> nil = (fireproximityprompt :: any)
 
 -- [RayField]
-local Rayfield = loadstring(
-	game:HttpGet("https://sirius.menu/rayfield")
-)()
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 -- [RBXThread]
 local RBXThread = setmetatable({
@@ -223,7 +219,7 @@ local GlobalSettings = {
 
 -- [Scripts]
 local Methods = {
-	["BlackMarketSell"] = function()
+	["Template"] = function()
 		local hasConnection = RBXSignal.Connections["BlackMarketSell"]
 
 		if hasConnection then
@@ -231,9 +227,6 @@ local Methods = {
 			-- When Disabled.
 			return
 		end
-
-        local BuyPrompt = workspace.ETC["Black Market Dealer"].Scrap.ProximityPrompt
-        local SellPrompt = workspace.Map.Prison.Outside.Yard["yard 2"]["Trash Dumpster 2"].Sell.ProximityPrompt
 
 		RBXSignal["BlackMarketSell"] = RunService.Heartbeat:Connect(function()
 			local Character: Model = game.Players.LocalPlayer.Character
@@ -243,12 +236,6 @@ local Methods = {
 				if not Humanoid then
 					return
 				end
-
-                Character:PivotTo(BuyPrompt.Parent.CFrame)
-                fireproximityprompt(BuyPrompt)
-                wait(1.35)
-                Character:PivotTo(SellPrompt.Parent.CFrame)
-                fireproximityprompt(SellPrompt)
 			end
 		end)
 	end,
@@ -258,9 +245,9 @@ local News = {
 	{
 		Title = "[V.0.1]",
 		Content = {
-			"+ Black Market Sell",
+			"+ Misc Section",
 		},
-	}
+	},
 }
 
 -- [Main]
@@ -270,27 +257,34 @@ Render:window(Window, {
 
 		for _, data in ipairs(News) do
 			local newContent = ""
-			
+
 			for id, text in data.Content do
-				newContent = string.format("%s%s%s", newContent,text, id ~= #data.Content and "\n" or "")
+				newContent = string.format("%s%s%s", newContent, text, id ~= #data.Content and "\n" or "")
 			end
 
 			tab:CreateParagraph({
 				Title = data.Title,
-				Content = newContent
+				Content = newContent,
 			})
 		end
 	end),
-    [2] = Element:CreateTab({ "Farm", 13849357156 }, function(tab)
-		tab:CreateSection("Farm(s) [Section]")
-
-		tab:CreateToggle({
-			Name = "Black Market [Sell]",
-			CurrentValue = false,
-			Flag = "BlackMarketSell",
+	[2] = Element:CreateTab({ "Player", 13849357156 }, function(tab)
+		tab:CreateSection("Misc [Section]")
+		tab:CreateButton({
+			Name = "Hit Poop",
 			Callback = function()
-				Methods.BlackMarketSell()
+				local args = {
+					0,
+					true,
+				}
+				game:GetService("ReplicatedStorage"):WaitForChild("PoopEvent"):FireServer(unpack(args))
 			end,
 		})
-	end)
+		tab:CreateButton({
+			Name = "Sell Inventory",
+			Callback = function()
+				game:GetService("ReplicatedStorage"):WaitForChild("Sell_Inventory"):FireServer()
+			end,
+		})
+	end),
 })
