@@ -1,0 +1,296 @@
+
+type GameType = typeof(game) & {
+    HttpGet: (link: any) -> any,
+}
+
+local game = game :: GameType
+local loadstring = loadstring :: (data: any) -> any
+local fireproximityprompt: (prompt: ProximityPrompt) -> nil = (fireproximityprompt :: any)
+
+-- [RayField]
+local Rayfield = loadstring(
+	game:HttpGet("https://sirius.menu/rayfield")
+)()
+
+-- [RBXThread]
+local RBXThread = setmetatable({
+	Tasks = {},
+}, {
+	__index = {
+		new = function(self, name, func)
+			-- If only one argument is provided and it's a function, use it as func with no name
+			if func == nil and type(name) == "function" then
+				func = name
+				name = tostring(#self.Tasks + 1)
+			end
+
+			-- Kill existing thread with the same name if it exists
+			if self.Tasks[name] then
+				self.Tasks[name]:kill()
+			end
+
+			-- Store a reference to the parent RBXThread for use in methods
+			local parent = self
+
+			local metadata = setmetatable({
+				Active = true,
+				Name = name,
+				Thread = nil,
+			}, {
+				__index = {
+					kill = function(this)
+						this.Active = false
+						print("Killed thread:", this.Name)
+					end,
+					destroy = function(this)
+						this.Active = false
+						parent.Tasks[this.Name] = nil
+						print("Destroyed thread:", this.Name)
+					end,
+				},
+			})
+
+			-- Create and store the thread
+			metadata.Thread = task.spawn(function()
+				while metadata.Active do
+					local success, result = pcall(func)
+					if not success then
+						warn("Thread error:", result)
+						break
+					end
+					task.wait()
+				end
+			end)
+
+			-- Store by name instead of inserting into array
+			self.Tasks[name] = metadata
+			return metadata
+		end,
+		clear = function(self)
+			for name, task in pairs(self.Tasks) do
+				task:kill()
+			end
+
+			table.clear(self.Tasks)
+		end,
+	},
+})
+
+-- [RBXSignal]
+local RBXSignal = setmetatable({
+	Connections = {},
+}, {
+	__newindex = function(self, name, signal)
+		self:new(name, signal)
+	end,
+	__index = {
+		new = function(self, name, signal)
+			local metadata = setmetatable({
+				Signal = signal,
+			}, {
+				__index = {
+					kill = function(this)
+						local success, response = pcall(function()
+							this.Signal:Disconnect()
+							self.Connections[name] = nil
+						end)
+
+						if not success then
+							Rayfield:Notify({
+								Title = "[Signal]",
+								Content = response,
+								Duration = 6.5,
+								Image = 83281150057063,
+							})
+						end
+					end,
+				},
+			})
+
+			self.Connections[name] = metadata
+			return metadata
+		end,
+		clear = function(self)
+			for index, signal in pairs(self.Connections) do
+				signal:kill()
+			end
+
+			table.clear(self.Connections)
+		end,
+	},
+})
+
+-- [Element]
+local Element = setmetatable({
+	Element = {},
+}, {
+	__index = {
+		CreateTab = function(self, properties, callback)
+			return setmetatable({
+				Callback = callback,
+				Properties = properties,
+				Window = nil,
+				Object = nil,
+			}, {
+				__index = {
+					set = function(self)
+						self.Object = self.Window:CreateTab(unpack(self.Properties))
+
+						local success, response = pcall(self.Callback, self.Object)
+
+						if not success then
+							Rayfield:Notify({
+								Title = "[Element]",
+								Content = response,
+								Duration = 6.5,
+								Image = 83281150057063,
+							})
+						end
+					end,
+				},
+			})
+		end,
+	},
+})
+
+-- [Render]
+local Render = setmetatable({}, {
+	__index = {
+		window = function(self, window, children)
+			Rayfield:Notify({
+				Title = "[Custom] Contents Render",
+				Content = "Please wait while we render all components.",
+				Duration = 6.5,
+				Image = 83281150057063,
+			})
+
+			for name, data in ipairs(children) do
+				data.Window = window
+				data:set()
+			end
+		end,
+	},
+})
+
+-- [Window]
+local Window = Rayfield:CreateWindow({
+	Name = "GoreX",
+	Icon = 83281150057063,
+	LoadingTitle = "Gore X [Rayfield Build]",
+	LoadingSubtitle = "by Vermin's Scripts",
+	Theme = "Amethyst",
+	DisableRayfieldPrompts = true,
+	DisableBuildWarnings = false,
+	ConfigurationSaving = {
+		Enabled = true,
+		FolderName = "GoreX_Config",
+		FileName = "settings",
+	},
+	Discord = {
+		Enabled = true,
+		Invite = "https://discord.gg/TnnxAnBf",
+		RememberJoins = true,
+	},
+	KeySystem = true,
+	KeySettings = {
+		Title = "GoreX [Keys]",
+		Subtitle = "Key's are distrubuted by [Vermin's Scripts]",
+		Note = "No method of obtaining the key is provided",
+		FileName = "Key",
+		SaveKey = true,
+		GrabKeyFromSite = false,
+		Key = { "123" },
+	},
+})
+
+-- [Dependencies]
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
+local UserInputService = game:GetService("UserInputService")
+
+-- [GlobalSettings]
+local GlobalSettings = {
+	["Weapon"] = {},
+	["Bring"] = {
+		distanceInFront = 5,
+		trackedDummies = {},
+	},
+	["Humanoid"] = {
+		WalkSpeed = 20,
+	},
+}
+
+-- [Scripts]
+local Methods = {
+	["BlackMarketSell"] = function()
+		local hasConnection = RBXSignal.Connections["BlackMarketSell"]
+
+		if hasConnection then
+			hasConnection:kill()
+			-- When Disabled.
+			return
+		end
+
+        local BuyPrompt = workspace.ETC["Black Market Dealer"].Scrap.ProximityPrompt
+        local SellPrompt = workspace.Map.Prison.Outside.Yard["yard 2"]["Trash Dumpster 2"].Sell.ProximityPrompt
+
+		RBXSignal["BlackMarketSell"] = RunService.Heartbeat:Connect(function()
+			local Character: Model = game.Players.LocalPlayer.Character
+
+			if Character then
+				local Humanoid = Character:FindFirstChild("Humanoid")
+				if not Humanoid then
+					return
+				end
+
+                Character:PivotTo(BuyPrompt.Parent.CFrame)
+                fireproximityprompt(BuyPrompt)
+                wait(1.35)
+                Character:PivotTo(SellPrompt.Parent.CFrame)
+                fireproximityprompt(SellPrompt)
+			end
+		end)
+	end,
+}
+
+local News = {
+	{
+		Title = "[V.0.1]",
+		Content = {
+			"+ Black Market Sell",
+		},
+	}
+}
+
+-- [Main]
+Render:window(Window, {
+	[1] = Element:CreateTab({ "Main", 13849004050 }, function(tab)
+		tab:CreateSection("News [Section]")
+
+		for _, data in ipairs(News) do
+			local newContent = ""
+			
+			for id, text in data.Content do
+				newContent = string.format("%s%s%s", newContent,text, id ~= #data.Content and "\n" or "")
+			end
+
+			tab:CreateParagraph({
+				Title = data.Title,
+				Content = newContent
+			})
+		end
+	end),
+    [2] = Element:CreateTab({ "Farm", 13849357156 }, function(tab)
+		tab:CreateSection("Farm(s) [Section]")
+
+		tab:CreateToggle({
+			Name = "Black Market [Sell]",
+			CurrentValue = false,
+			Flag = "BlackMarketSell",
+			Callback = function()
+				Methods.BlackMarketSell()
+			end,
+		})
+	end)
+})
